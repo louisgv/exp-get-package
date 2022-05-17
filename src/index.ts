@@ -1,5 +1,46 @@
-#!/usr/bin/env node
+/**
+ * Forked from https://github.com/vercel/next.js/blob/canary/packages/create-next-app/helpers/get-pkg-manager.ts
+ */
+import spawnAsync from "@expo/spawn-async"
+import { valid } from "semver"
 
-export const life = 42
+export type PackageManager = "npm" | "pnpm" | "yarn"
 
-console.log("HELLO WORLD", life)
+export type PackageManagerInfo = {
+  name: PackageManager
+  version?: string
+}
+
+async function getPMInfo(name: PackageManager): Promise<PackageManagerInfo> {
+  const data = await spawnAsync(name, ["--version"])
+  const version = valid(data.stdout.trim())
+  return { name, version }
+}
+
+export async function getPackageManager(): Promise<PackageManagerInfo> {
+  try {
+    const userAgent = process.env.npm_config_user_agent
+
+    if (userAgent) {
+      if (userAgent.startsWith("yarn")) {
+        return { name: "yarn" }
+      } else if (userAgent.startsWith("pnpm")) {
+        return { name: "pnpm" }
+      }
+    }
+    try {
+      return getPMInfo("pnpm")
+    } catch {
+      return getPMInfo("yarn")
+    }
+  } catch {
+    return getPMInfo("npm")
+  }
+}
+
+async function main() {
+  const { name } = await getPackageManager()
+  console.log(name)
+}
+
+main()
